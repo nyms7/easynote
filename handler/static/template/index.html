@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EasyNote</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            overflow: hidden;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        section {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            flex: 1;
+            overflow-y: auto;
+        }
+        textarea {
+            width: 100%;
+            height: calc(100vh - 180px);
+            margin-bottom: 10px;
+            display: block;
+            box-sizing: border-box;
+            resize: none;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .input-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 40%;
+            margin-left: auto;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            box-sizing: border-box;
+            padding: 10px;
+        }
+        input, button {
+            padding: 10px 20px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            margin-left: 10px;
+        }
+        input {
+            flex: 1;
+            margin-right: 10px;
+        }
+        footer {
+            background-color: #f0f0f0;
+            text-align: center;
+            padding: 10px 0;
+        }
+        footer a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+    <script>
+        function submitData() {
+            var content = document.querySelector('textarea').value;
+            var token = document.querySelector('input').value;
+            var data = {
+                content: content,
+                token: token
+            };
+
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status !== 0) {
+                    alert('请求失败：' + data.message);
+                } else {
+                    alert('提交成功');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('error happend');
+            });
+        }
+
+        function copyUrl() {
+            var url = window.location.origin + window.location.pathname; // 获取当前页面的路径
+            var token = document.querySelector('input').value;
+            var urlWithToken = url + '?token=' + encodeURIComponent(token); // 将 token 编码并拼接到 URL 中
+            navigator.clipboard.writeText(urlWithToken).then(function() {
+                alert("分享链接已复制到剪贴板");
+            }).catch(function() {
+                alert("复制失败");
+            });
+        }
+
+        window.onload = function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var token = urlParams.get('token');
+            if (token) {
+                document.querySelector('input').value = decodeURIComponent(token); // 将 token 解码并设置为输入框的值
+            }
+
+            var yearSpan = document.getElementById('current-year');
+            var currentYear = new Date().getFullYear();
+            yearSpan.textContent = currentYear;
+        };
+    </script>
+</head>
+<body>
+    <section>
+        <textarea>{{ .Content }}</textarea>
+        <div class="input-container">
+            <input placeholder="密码：输入后需要携带才能查看数据" />
+            <button onclick="submitData()">提交</button>
+            <button onclick="copyUrl()">复制链接</button>
+        </div>
+    </section>
+    <footer>
+        <p>© <span id="current-year"></span> Powered by <a href="https://github.com/nyms7/easynote">EasyNote</a></p>
+    </footer>
+</body>
+</html>
