@@ -10,7 +10,7 @@ func MaxCodeSize() int {
 	return GlobalConf.MaxCodeSize
 }
 
-func MaxTokenSize() int {
+func MaxPasswordSize() int {
 	return GlobalConf.MaxTokenSize
 }
 

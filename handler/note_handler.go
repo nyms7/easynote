@@ -19,8 +19,8 @@ import (
 var templateFS embed.FS
 
 type NotePayload struct {
-	Token   string `json:"token"`
-	Content string `json:"content"`
+	Password string `json:"password"`
+	Content  string `json:"content"`
 }
 
 func NoteHandler(w http.ResponseWriter, r *http.Request) {
@@ -52,12 +52,11 @@ func NoteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		note := data_manager.Load(ctx, code)
 		if note != nil {
-			if note.NoteMeta.Token != "" {
-				token := r.URL.Query().Get("token")
-				if token != note.NoteMeta.Token {
-					utils.Response(w, r, http.StatusForbidden, "token auth failed", nil)
-					return
-				}
+			tokenOk := note.NoteMeta.Token == "" || utils.GetCookie(w, r, "_token") == note.NoteMeta.Token
+			passOk := note.NoteMeta.Password == "" || r.URL.Query().Get("p") == note.NoteMeta.Password
+			if !tokenOk && !passOk {
+				utils.Response(w, r, http.StatusForbidden, "auth failed", nil)
+				return
 			}
 			renderNotePage(ctx, w, r, note)
 			return
@@ -76,33 +75,38 @@ func NoteHandler(w http.ResponseWriter, r *http.Request) {
 
 		var payload NotePayload
 		if err := json.Unmarshal(body, &payload); err != nil {
-			utils.Response(w, r, http.StatusBadRequest, "invalid too long", nil)
+			utils.Response(w, r, http.StatusBadRequest, "invalid payload", nil)
 			return
 		}
 
 		logs.CtxInfo(ctx, "[NoteHandler] post payload: %+v", payload)
 
-		// check content size
 		if len(payload.Content) > conf.MaxContentSize() {
-			utils.Response(w, r, http.StatusBadRequest, "payload too long", nil)
+			utils.Response(w, r, http.StatusBadRequest, "content too long", nil)
 			return
 		}
 
-		// check code size
 		if len(code) > conf.MaxCodeSize() {
 			utils.Response(w, r, http.StatusBadRequest, "code too long", nil)
 			return
 		}
 
-		// check token size
-		if len(payload.Token) > conf.MaxTokenSize() {
-			utils.Response(w, r, http.StatusBadRequest, "token too long", nil)
+		if len(payload.Password) > conf.MaxPasswordSize() {
+			utils.Response(w, r, http.StatusBadRequest, "password too long", nil)
 			return
 		}
 
-		if err := data_manager.Upsert(ctx, code, payload.Token, payload.Content); err != nil {
+		token := utils.GetCookie(w, r, "_token")
+		if note, err := data_manager.Upsert(ctx, code, payload.Password, token, payload.Content); err != nil {
 			utils.Response(w, r, http.StatusInternalServerError, err.Error(), nil)
 			return
+		} else {
+			http.SetCookie(w, &http.Cookie{
+				Name:    "_token",
+				Value:   note.NoteMeta.Token,
+				Expires: time.Now().Add(24 * time.Hour),
+				Path:    "/",
+			})
 		}
 
 		utils.RespondSuccess(w, r, nil)

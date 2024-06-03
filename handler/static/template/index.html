@@ -1,144 +1,89 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="zh-CN">
+
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>EasyNote</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            overflow: hidden;
-            background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-        section {
-            width: 100%;
-            padding: 20px;
-            box-sizing: border-box;
-            flex: 1;
-            overflow-y: auto;
-        }
-        textarea {
-            width: 100%;
-            height: calc(100vh - 180px);
-            margin-bottom: 10px;
-            display: block;
-            box-sizing: border-box;
-            resize: none;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .input-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 40%;
-            margin-left: auto;
-            margin-top: 10px;
-            margin-bottom: 10px;
-            box-sizing: border-box;
-            padding: 10px;
-        }
-        input, button {
-            padding: 10px 20px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            cursor: pointer;
-            background-color: #fff;
-            border-radius: 5px;
-        }
-        button {
-            background-color: #007bff;
-            color: #fff;
-            margin-left: 10px;
-        }
-        input {
-            flex: 1;
-            margin-right: 10px;
-        }
-        footer {
-            background-color: #f0f0f0;
-            text-align: center;
-            padding: 10px 0;
-        }
-        footer a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        footer a:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <link href="https://gcore.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-GLhlTQ8iRABdZLl6O3oVMWSktQOp6b7In1Zl3/Jr59b6EGGoI1aFkw7cmDA6j6gD" crossorigin="anonymous">
+    <link href="https://getbootstrap.com/docs/5.3/assets/css/docs.css" rel="stylesheet">
+    <script src="https://gcore.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-/mhDoLbDldZc3qpsJHpLogda//BVZbgYuw6kof4u2FrCedxOtgRZDTHgHUhOCVim"
+        crossorigin="anonymous"></script>
     <script>
-        function submitData() {
-            var content = document.querySelector('textarea').value;
-            var token = document.querySelector('input').value;
-            var data = {
-                content: content,
-                token: token
+        function sendData() {
+            const contentTextarea = document.getElementById("content");
+            const passwordInput = document.getElementById("password");
+
+            const data = {
+                content: contentTextarea.value,
+                password: passwordInput.value
             };
 
             fetch(window.location.href, {
-                method: 'POST',
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json'
+                    "Content-Type": "application/json"
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify(data),
+                credentials: "include"
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status !== 0) {
-                    alert('请求失败：' + data.message);
-                } else {
-                    alert('提交成功');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('error happend');
-            });
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status !== 0) {
+                        console.error("submit note err ", err);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error:", error);
+                });
         }
-
         function copyUrl() {
-            var url = window.location.origin + window.location.pathname; // 获取当前页面的路径
-            var token = document.querySelector('input').value;
-            var urlWithToken = url + '?token=' + encodeURIComponent(token); // 将 token 编码并拼接到 URL 中
-            navigator.clipboard.writeText(urlWithToken).then(function() {
-                alert("分享链接已复制到剪贴板");
-            }).catch(function() {
-                alert("复制失败");
+            const passwordInput = document.getElementById("password");
+            const url = new URL(window.location.href);
+
+            url.search = "";
+            
+            const newUrl = `${url.origin}${url.pathname}?p=${encodeURIComponent(passwordInput.value)}`;
+            
+            navigator.clipboard.writeText(newUrl).then(() => {
+                console.log('copy success ' + newUrl);
+            }).catch(err => {
+                console.error("copy err ", err);
             });
         }
-
-        window.onload = function() {
-            var urlParams = new URLSearchParams(window.location.search);
-            var token = urlParams.get('token');
-            if (token) {
-                document.querySelector('input').value = decodeURIComponent(token); // 将 token 解码并设置为输入框的值
-            }
-
-            var yearSpan = document.getElementById('current-year');
-            var currentYear = new Date().getFullYear();
-            yearSpan.textContent = currentYear;
-        };
     </script>
 </head>
-<body>
-    <section>
-        <textarea>{{ .Content }}</textarea>
-        <div class="input-container">
-            <input placeholder="密码：输入后需要携带才能查看数据" />
-            <button onclick="submitData()">提交</button>
-            <button onclick="copyUrl()">复制链接</button>
+
+<body class="vh-100" style="background-color: #f8f9fa;">
+    <div class="container-fluid vh-100 d-flex flex-column  m-0 border-0 bd-example">
+        <div class="row flex-grow-1 mb-3">
+            <div class="col-md-12 d-flex">
+                <textarea class="form-control flex-grow-1" id="content" aria-label="With textarea" oninput="sendData()">{{ .Content }}</textarea>
+            </div>
         </div>
-    </section>
-    <footer>
-        <p>© <span id="current-year"></span> Powered by <a href="https://github.com/nyms7/easynote">EasyNote</a></p>
-    </footer>
+        <div class="row flex-grow-2">
+            <div class="col-md-3 offset-md-9">
+                <div class="input-group">
+                    <span class="input-group-text">密码</span>
+                    <input type="text" class="form-control" id="password" aria-label="Sizing example input" oninput="sendData()"
+                        aria-describedby="inputGroup-sizing-default">
+                    <button type="button" class="btn btn-primary ms-2 rounded" onclick="copyUrl()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-clipboard-check" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd"
+                                d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0z" />
+                            <path
+                                d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z" />
+                            <path
+                                d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z" />
+                        </svg>
+                        复制链接
+                    </button>
+                </div>
+            </div>
+        </div>
 </body>
+
 </html>
