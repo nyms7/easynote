@@ -28,9 +28,11 @@ type Note struct {
 }
 
 type NoteMeta struct {
-	Token     string `json:"-"`
-	CreatedAt int64  `json:"created_at"`
-	UpdatedAt int64  `json:"updated_at"`
+	Password      string `json:"-"`
+	Token         string `json:"token"`
+	TokenExpireAt int64  `json:"token_expire_at"`
+	CreatedAt     int64  `json:"created_at"`
+	UpdatedAt     int64  `json:"updated_at"`
 }
 
 func (m *NoteManager) MarshalJSON() ([]byte, error) {
@@ -69,12 +71,13 @@ func Load(ctx context.Context, code string) *Note {
 	return GlobalManater.Load(ctx, code)
 }
 
-func Upsert(ctx context.Context, code, token, content string) error {
-	return GlobalManater.Upsert(ctx, code, token, content)
+func Upsert(ctx context.Context, code, password, token, content string) (*Note, error) {
+	return GlobalManater.Upsert(ctx, code, password, token, content)
 }
 
 func (m *NoteManager) Apply(ctx context.Context) string {
-	for times := 0; times < 10000; times++ {
+	// 不会真的能碰撞 100 次吧
+	for times := 0; times < 100; times++ {
 		id := atomic.AddUint64(&m.LastID, 1)
 		code := utils.HashAndTrim(fmt.Sprintf("%d%s", id, m.Seed))
 		if _, ok := m.CodeMap.Load(code); !ok {
@@ -96,32 +99,37 @@ func (m *NoteManager) Load(ctx context.Context, code string) *Note {
 	return nil
 }
 
-func (m *NoteManager) Upsert(ctx context.Context, code, token, content string) error {
+func (m *NoteManager) Upsert(ctx context.Context, code, password, token, content string) (*Note, error) {
+	now := time.Now()
+	// insert note, generate token
 	origin := m.Load(ctx, code)
 	if origin == nil {
 		id := atomic.AddUint64(&m.LastID, 1)
 		m.CodeMap.Store(code, id)
-		m.NoteMap.Store(id, &Note{
+		note := &Note{
 			ID:      id,
 			Content: content,
 			NoteMeta: &NoteMeta{
-				Token:     token,
-				CreatedAt: time.Now().Unix(),
-				UpdatedAt: time.Now().Unix(),
+				Token:     utils.SimpleRandString(16),
+				Password:  password,
+				CreatedAt: now.Unix(),
+				UpdatedAt: now.Unix(),
 			},
-		})
-		return nil
+		}
+		m.NoteMap.Store(id, note)
+		return note, nil
 	}
-	// first time to set token
-	if origin.NoteMeta.Token == "" {
-		origin.NoteMeta.Token = token
+
+	tokenOk := origin.NoteMeta.Token == "" || token == origin.NoteMeta.Token
+	passOk := origin.NoteMeta.Password == "" || password == origin.NoteMeta.Password
+	if !tokenOk && !passOk {
+		return nil, errors.New("auth failed")
 	}
-	if origin.NoteMeta.Token != token {
-		return errors.New("token auth failed")
-	}
+
 	origin.Content = content
+	origin.NoteMeta.Password = password
 	origin.NoteMeta.UpdatedAt = time.Now().Unix()
-	return nil
+	return origin, nil
 }
 
 func (m *NoteManager) Reset() {

@@ -12,6 +12,8 @@ import (
 	"math"
 	"net/http"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 func main() {
@@ -85,14 +87,22 @@ func initCleaner() {
 		}
 	}()
 	logs.Infof("init cleaner success")
-	select {}
 }
 
 func serve(port int) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler.NoteHandler)
-	mux.HandleFunc("/api/stat", handler.StatHandler)
+	requestsLimit, burstLimit, blockSeconds := 100, 10, 10*60
+	rateLimiter := utils.NewRateLimiter(rate.Limit(requestsLimit), burstLimit, int64(blockSeconds))
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if !rateLimiter.Allow() {
+			utils.Response(w, r, http.StatusTooManyRequests, "too many request", nil)
+			return
+		}
+		handler.NoteHandler(w, r)
+	})
+
+	http.HandleFunc("/api/stat", handler.StatHandler)
 
 	logs.Infof("start service on http://localhost:%d", port)
-	_ = http.ListenAndServe(":"+fmt.Sprintf("%d", port), utils.RateLimit(mux))
+	_ = http.ListenAndServe(":"+fmt.Sprintf("%d", port), nil)
 }

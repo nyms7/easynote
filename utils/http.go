@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"easynote/logs"
 	"encoding/json"
 	"net/http"
 )
@@ -32,4 +33,18 @@ func Response(w http.ResponseWriter, r *http.Request, status int, message string
 	w.Header().Set("Cache-Control", "no-store")
 
 	w.Write(body)
+}
+
+func GetCookie(w http.ResponseWriter, r *http.Request, name string) string {
+	cookie, err := r.Cookie(name)
+	if err != nil {
+		if err != http.ErrNoCookie {
+			logs.Errorf("[GetCookie] err: %v", err)
+			return ""
+		}
+	}
+	if cookie == nil {
+		return ""
+	}
+	return cookie.Value
 }
